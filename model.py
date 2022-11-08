@@ -112,8 +112,6 @@ def create_model(instance_shape:tuple, bag_size:int):
         bag_size (int): bag 내에 인스턴스 수
     """
 
-    
-    
     inputs = list()
     for _ in range(bag_size):
         inputs.append(layers.Input(shape=instance_shape))
@@ -122,8 +120,7 @@ def create_model(instance_shape:tuple, bag_size:int):
     
     conv2d = tf.keras.layers.Conv2D(filter=10, strides=3)
     feature_map = conv2d(stacked_input)
-    # 
-    
+        
     alpha = MILAttentionLayer(
         weight_params_dim=256,
         kernel_regularizer=keras.regularizers.l2(0.01),
