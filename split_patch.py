@@ -22,7 +22,7 @@ def get_image_abs_path(directory: str) -> list:
 
 def is_white_patch(image_array:np.ndarray, fill_cutoff=0.3) -> bool:
     """이미지의 대다수가 백그라운드인지 확인하는 메서드"""
-    h, w = image_array.shape
+    h, w, c = image_array.shape
     
     n_pixels = h * w
     threshold, bin_img = cv2.threshold(image_array, 224, 255, cv2.THRESH_BINARY_INV)
