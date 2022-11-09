@@ -108,7 +108,7 @@ class MILAttention(Layer):
         self.w_regularizer = regularizers.get(kernel_regularizer)
         self.u_regularizer = regularizers.get(kernel_regularizer)
 
-        super(Mil_Attention, self).__init__(**kwargs)
+        super(MILAttention, self).__init__(**kwargs)
 
     def build(self, input_shape):
 
@@ -196,9 +196,9 @@ def build_model(input_dim):
   #  fp = Feature_pooling(output_dim=1, kernel_regularizer=l2(0.0005), pooling_mode='max',
 #                          name='fp')(fc2)
 
-    alpha = Mil_Attention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(fc2)
+    alpha = MILAttention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(fc2)
     x_mul = multiply([alpha, fc2])
 
-    out = Last_Sigmoid(output_dim=1, name='FC1_sigmoid')(x_mul)
-    #
+    out = MILSigmoid(output_dim=1, name='FC1_sigmoid')(x_mul)
+    
     return Model(inputs=[data_input], outputs=[out])
