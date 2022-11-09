@@ -11,7 +11,7 @@ def get_args() -> argparse:
     parser.add_argument("-i2", "--input2", help="test_clincal data path", required=True)
     parser.add_argument("-o", "--output", help="clincal data path", required=True)
 
-    return parser.prase()
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
