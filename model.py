@@ -1,142 +1,204 @@
 import tensorflow as tf
-from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras.layers import Input, Dense, Layer, Dropout, Conv2D, MaxPooling2D, Flatten, multiply
+from tensorflow.keras.models import Model
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras import activations, initializers, regularizers
+from tensorflow.keras import backend as K
 
-class MILAttentionLayer(layers.Layer):
-    """Implementation of the attention-based Deep MIL layer.
-
-    Args:
-      weight_params_dim: Positive Integer. Dimension of the weight matrix.
-      kernel_initializer: Initializer for the `kernel` matrix.
-      kernel_regularizer: Regularizer function applied to the `kernel` matrix.
-      use_gated: Boolean, whether or not to use the gated mechanism.
-
-    Returns:
-      List of 2D tensors with BAG_SIZE length.
-      The tensors are the attention scores after softmax with shape `(batch_size, 1)`.
+class MILSigmoid(Layer):
     """
+    Attention Activation
+    This layer contains a FC layer which only has one neural with sigmoid actiavtion
+    and MIL pooling. The input of this layer is instance features. Then we obtain
+    instance scores via this FC layer. And use MIL pooling to aggregate instance scores
+    into bag score that is the output of Score pooling layer.
+    This layer is used in mi-Net.
+    # Arguments
+        output_dim: Positive integer, dimensionality of the output space
+        kernel_initializer: Initializer of the `kernel` weights matrix
+        bias_initializer: Initializer of the `bias` weights
+        kernel_regularizer: Regularizer function applied to the `kernel` weights matrix
+        bias_regularizer: Regularizer function applied to the `bias` weights
+        use_bias: Boolean, whether use bias or not
+        pooling_mode: A string,
+                      the mode of MIL pooling method, like 'max' (max pooling),
+                      'ave' (average pooling), 'lse' (log-sum-exp pooling)
+    # Input shape
+        2D tensor with shape: (batch_size, input_dim)
+    # Output shape
+        2D tensor with shape: (1, units)
+    """
+    def __init__(self, output_dim, kernel_initializer='glorot_uniform', bias_initializer='zeros',
+                    kernel_regularizer=None, bias_regularizer=None,
+                    use_bias=True, **kwargs):
+        self.output_dim = output_dim
 
-    def __init__(
-        self,
-        weight_params_dim,
-        kernel_initializer="glorot_uniform",
-        kernel_regularizer=None,
-        use_gated=False,
-        **kwargs,
-    ):
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.bias_initializer = initializers.get(bias_initializer)
+        self.kernel_regularizer = regularizers.get(kernel_regularizer)
+        self.bias_regularizer = regularizers.get(bias_regularizer)
 
-        super().__init__(**kwargs)
-
-        self.weight_params_dim = weight_params_dim
-        self.use_gated = use_gated
-
-        self.kernel_initializer = keras.initializers.get(kernel_initializer)
-        self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
-
-        self.v_init = self.kernel_initializer
-        self.w_init = self.kernel_initializer
-        self.u_init = self.kernel_initializer
-
-        self.v_regularizer = self.kernel_regularizer
-        self.w_regularizer = self.kernel_regularizer
-        self.u_regularizer = self.kernel_regularizer
+        self.use_bias = use_bias
+        super(MILSigmoid, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        assert len(input_shape) == 2
+        input_dim = input_shape[1]
 
-        # Input shape.
-        # List of 2D tensors with shape: (batch_size, input_dim).
-        input_dim = input_shape[0][1]
+        self.kernel = self.add_weight(shape=(input_dim, self.output_dim),
+                                        initializer=self.kernel_initializer,
+                                        name='kernel',
+                                        regularizer=self.kernel_regularizer)
 
-        self.v_weight_params = self.add_weight(
-            shape=(input_dim, self.weight_params_dim),
-            initializer=self.v_init,
-            name="v",
-            regularizer=self.v_regularizer,
-            trainable=True,
-        )
-
-        self.w_weight_params = self.add_weight(
-            shape=(self.weight_params_dim, 1),
-            initializer=self.w_init,
-            name="w",
-            regularizer=self.w_regularizer,
-            trainable=True,
-        )
-
-        if self.use_gated:
-            self.u_weight_params = self.add_weight(
-                shape=(input_dim, self.weight_params_dim),
-                initializer=self.u_init,
-                name="u",
-                regularizer=self.u_regularizer,
-                trainable=True,
-            )
+        if self.use_bias:
+            self.bias = self.add_weight(shape=(self.output_dim,),
+                                        initializer=self.bias_initializer,
+                                        name='bias',
+                                        regularizer=self.bias_regularizer)
         else:
-            self.u_weight_params = None
+            self.bias = None
 
         self.input_built = True
 
-    def call(self, inputs):
+    def call(self, x, mask=None):
+        n, d = x.shape
+        x = K.sum(x, axis=0, keepdims=True)
+        # compute instance-level score
+        x = K.dot(x, self.kernel)
+        if self.use_bias:
+            x = K.bias_add(x, self.bias)
 
-        # Assigning variables from the number of inputs.
-        instances = [self.compute_attention_scores(instance) for instance in inputs]
+        # sigmoid
+        out = K.sigmoid(x)
 
-        # Apply softmax over instances such that the output summation is equal to 1.
-        alpha = tf.math.softmax(instances, axis=0)
 
-        return [alpha[i] for i in range(alpha.shape[0])]
+        return out
 
-    def compute_attention_scores(self, instance):
+    def compute_output_shape(self, input_shape):
+        shape = list(input_shape)
+        assert len(shape) == 2
+        shape[1] = self.output_dim
+        return tuple(shape)
 
-        # Reserve in-case "gated mechanism" used.
-        original_instance = instance
 
-        # tanh(v*h_k^T)
-        instance = tf.math.tanh(tf.tensordot(instance, self.v_weight_params, axes=1))
+class MILAttention(Layer):
+    """
+    Mil Attention Mechanism
+    This layer contains Mil Attention Mechanism
+    # Input Shape
+        2D tensor with shape: (batch_size, input_dim)
+    # Output Shape
+        2D tensor with shape: (1, units)
+    """
 
-        # for learning non-linear relations efficiently.
+    def __init__(self, L_dim, output_dim, kernel_initializer='glorot_uniform', kernel_regularizer=None,
+                    use_bias=True, use_gated=False, **kwargs):
+        self.L_dim = L_dim
+        self.output_dim = output_dim
+        self.use_bias = use_bias
+        self.use_gated = use_gated
+
+        self.v_init = initializers.get(kernel_initializer)
+        self.w_init = initializers.get(kernel_initializer)
+        self.u_init = initializers.get(kernel_initializer)
+
+
+        self.v_regularizer = regularizers.get(kernel_regularizer)
+        self.w_regularizer = regularizers.get(kernel_regularizer)
+        self.u_regularizer = regularizers.get(kernel_regularizer)
+
+        super(Mil_Attention, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+
+        assert len(input_shape) == 2
+        input_dim = input_shape[1]
+
+        self.V = self.add_weight(shape=(input_dim, self.L_dim),
+                                      initializer=self.v_init,
+                                      name='v',
+                                      regularizer=self.v_regularizer,
+                                      trainable=True)
+
+
+        self.w = self.add_weight(shape=(self.L_dim, 1),
+                                    initializer=self.w_init,
+                                    name='w',
+                                    regularizer=self.w_regularizer,
+                                    trainable=True)
+
+
         if self.use_gated:
+            self.U = self.add_weight(shape=(input_dim, self.L_dim),
+                                     initializer=self.u_init,
+                                     name='U',
+                                     regularizer=self.u_regularizer,
+                                     trainable=True)
+        else:
+            self.U = None
 
-            instance = instance * tf.math.sigmoid(
-                tf.tensordot(original_instance, self.u_weight_params, axes=1)
-            )
-
-        # w^T*(tanh(v*h_k^T)) / w^T*(tanh(v*h_k^T)*sigmoid(u*h_k^T))
-        return tf.tensordot(instance, self.w_weight_params, axes=1)
+        self.input_built = True
 
 
-def create_model(instance_shape:tuple, bag_size:int):
-    """
-    
-    ARGS
-        bag_size (int): bag 내에 인스턴스 수
-    """
+    def call(self, x, mask=None):
+        n, d = x.shape
+        ori_x = x
+        # do Vhk^T
+        x = K.tanh(K.dot(x, self.V)) # (2,64)
 
-    inputs = list()
-    for _ in range(bag_size):
-        inputs.append(layers.Input(shape=instance_shape))
-    stacked_input = tf.stack(inputs)
+        if self.use_gated:
+            gate_x = K.sigmoid(K.dot(ori_x, self.U))
+            ac_x = x * gate_x
+        else:
+            ac_x = x
 
-    
-    conv2d = tf.keras.layers.Conv2D(filter=10, strides=3)
-    feature_map = conv2d(stacked_input)
-        
-    alpha = MILAttentionLayer(
-        weight_params_dim=256,
-        kernel_regularizer=keras.regularizers.l2(0.01),
-        use_gated=True,
-        name="alpha",
-    )(embeddings)
+        # do w^T x
+        soft_x = K.dot(ac_x, self.w)  # (2,64) * (64, 1) = (2,1)
+        alpha = K.softmax(K.transpose(soft_x)) # (2,1)
+        alpha = K.transpose(alpha)
+        return alpha
 
-    # Multiply attention weights with the input layers.
-    multiply_layers = [
-        layers.multiply([alpha[i], embeddings[i]]) for i in range(len(alpha))
-    ]
+    def compute_output_shape(self, input_shape):
+        shape = list(input_shape)
+        assert len(shape) == 2
+        shape[1] = self.output_dim
+        return tuple(shape)
 
-    # Concatenate layers.
-    concat = layers.concatenate(multiply_layers, axis=1)
+    def get_config(self):
+        config = {
+            'output_dim': self.output_dim,
+            'v_initializer': initializers.serialize(self.V.initializer),
+            'w_initializer': initializers.serialize(self.w.initializer),
+            'v_regularizer': regularizers.serialize(self.v_regularizer),
+            'w_regularizer': regularizers.serialize(self.w_regularizer),
+            'use_bias': self.use_bias
+        }
+        base_config = super(MILAttention, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
-    # Classification output node.
-    output = layers.Dense(2, activation="softmax")(concat)
 
-    return keras.Model(inputs, output)
+def build_model(input_dim):
+
+    data_input = Input(shape=input_dim, dtype='float32', name='input')
+    conv1 = Conv2D(36, kernel_size=(4,4), activation='relu')(data_input)
+    conv1 = MaxPooling2D((2,2))(conv1)
+
+    conv2 = Conv2D(48, kernel_size=(3,3),  activation='relu')(conv1)
+    conv2 = MaxPooling2D((2,2))(conv2)
+    x = Flatten()(conv2)
+
+    fc1 = Dense(512, activation='relu',name='fc1')(x)
+    fc1 = Dropout(0.5)(fc1)
+    fc2 = Dense(512, activation='relu', name='fc2')(fc1)
+    fc2 = Dropout(0.5)(fc2)
+
+  #  fp = Feature_pooling(output_dim=1, kernel_regularizer=l2(0.0005), pooling_mode='max',
+#                          name='fp')(fc2)
+
+    alpha = Mil_Attention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(fc2)
+    x_mul = multiply([alpha, fc2])
+
+    out = Last_Sigmoid(output_dim=1, name='FC1_sigmoid')(x_mul)
+    #
+    return Model(inputs=[data_input], outputs=[out])
