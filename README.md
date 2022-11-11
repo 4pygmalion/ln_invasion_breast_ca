@@ -3,7 +3,7 @@
 
 ### Install
 ```
-python3 -m pip install opencv-python numpy Pillow pandas tensorflow matplotlib sklearn
+python3 -m pip install opencv-python numpy Pillow pandas tensorflow matplotlib scikit-learn
 ```
 
 ### How to use
