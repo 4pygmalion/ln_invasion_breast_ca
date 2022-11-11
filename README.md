@@ -1,4 +1,4 @@
-### Lymph Node Invasion classification using pathological image of breast ca
+### Lymph Node Invasion classification with Multiple Instance Learning(MIL)
 
 
 ### Install
@@ -32,6 +32,11 @@ $ python3 split_patch.py -i data/test_imgs -o data/test_imgs_patch
 │  │  ├─BC_01_0010
 ....
 
+```
+
+2. model training
+```
+$ python3 train_model.py
 ```
 
 
