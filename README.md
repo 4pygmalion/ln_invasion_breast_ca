@@ -3,7 +3,8 @@
 
 ### Install
 ```
-python3 -m pip install opencv-python numpy Pillow pandas tensorflow matplotlib scikit-learn
+$ conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+$ python3 -m pip install opencv-python numpy Pillow pandas tensorflow matplotlib scikit-learn
 ```
 
 ### How to use
