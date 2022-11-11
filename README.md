@@ -1,6 +1,11 @@
 ### Lymph Node Invasion classification using pathological image of breast ca
 
 
+### Install
+```
+python3 -m pip install opencv-python
+```
+
 ### How to use
 1. split patch
 ```
