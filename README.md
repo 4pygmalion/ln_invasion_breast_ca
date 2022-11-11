@@ -3,7 +3,7 @@
 
 ### Install
 ```
-python3 -m pip install opencv-python
+python3 -m pip install opencv-python numpy Pillow
 ```
 
 ### How to use
