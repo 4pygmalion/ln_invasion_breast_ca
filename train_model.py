@@ -62,34 +62,30 @@ if __name__ == "__main__":
         args=(val_bag_names, val_y, val_bags),
     )
 
-    
-    gpus = tf.config.list_logical_devices('GPU')
-    strategy = tf.distribute.MirroredStrategy(gpus)
-    with strategy.scope():
-        model = build_model(PATCH_SHAPE)
-        model.summary()
 
-        os.makedirs("check_points", exist_ok=True)
-        model_name = "check_points/" + "_Batch_size_" + "epoch_" + "best.hd5"
-        checkpoint_fixed_name = tf.keras.callbacks.ModelCheckpoint(
-            model_name,
-            monitor="val_loss",
-            verbose=1,
-            save_best_only=True,
-            save_weights_only=True,
-            mode="auto",
-            period=1,
-        )
+    model = build_model(PATCH_SHAPE)
+    model.summary()
 
-        EarlyStop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
-        callbacks = [checkpoint_fixed_name, EarlyStop]
+    os.makedirs("check_points", exist_ok=True)
+    model_name = "check_points/" + "_bag_accuracy_" + "epoch_" + "best.hd5"
+    check_point = tf.keras.callbacks.ModelCheckpoint(
+        model_name,
+        monitor="val_loss",
+        verbose=1,
+        save_best_only=True,
+        save_weights_only=True,
+        mode="auto",
+        period=1,
+    )
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
+    callbacks = [check_point, early_stopping]
 
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(),
-            loss=bag_loss,
-            metrics=[bag_accuracy],
-        )
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss=bag_loss,
+        metrics=[bag_accuracy],
+    )
 
-        model.fit(
-            train_dataset, validation_data=val_dataset, callbacks=callbacks, epochs=10
-        )
+    model.fit(
+        train_dataset, validation_data=val_dataset, callbacks=callbacks, epochs=10
+    )
