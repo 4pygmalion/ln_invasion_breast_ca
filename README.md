@@ -3,7 +3,7 @@
 
 ### Install
 ```
-python3 -m pip install opencv-python numpy Pillow
+python3 -m pip install opencv-python numpy Pillow pandas tensorflow
 ```
 
 ### How to use
