@@ -13,6 +13,7 @@ from loss import bag_loss, bag_accuracy
 
 print(tf.__version__)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
+tf.debugging.set_log_device_placement(True)
 
 PATCH_SHAPE = (224, 224, 3)
 
@@ -61,31 +62,34 @@ if __name__ == "__main__":
         args=(val_bag_names, val_y, val_bags),
     )
 
-    bag_img_tensor, bag_label_tensor = next(iter(train_dataset))
+    
+    gpus = tf.config.list_logical_devices('GPU')
+    strategy = tf.distribute.MirroredStrategy(gpus)
+    with strategy.scope():
+        model = build_model(PATCH_SHAPE)
+        model.summary()
 
-    model = build_model(PATCH_SHAPE)
-    model.summary()
+        os.makedirs("check_points", exist_ok=True)
+        model_name = "check_points/" + "_Batch_size_" + "epoch_" + "best.hd5"
+        checkpoint_fixed_name = tf.keras.callbacks.ModelCheckpoint(
+            model_name,
+            monitor="val_loss",
+            verbose=1,
+            save_best_only=True,
+            save_weights_only=True,
+            mode="auto",
+            period=1,
+        )
 
-    model_name = "Saved_model/" + "_Batch_size_" + "epoch_" + "best.hd5"
-    checkpoint_fixed_name = tf.keras.callbacks.ModelCheckpoint(
-        model_name,
-        monitor="val_loss",
-        verbose=1,
-        save_best_only=True,
-        save_weights_only=True,
-        mode="auto",
-        period=1,
-    )
+        EarlyStop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
+        callbacks = [checkpoint_fixed_name, EarlyStop]
 
-    EarlyStop = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
-    callbacks = [checkpoint_fixed_name, EarlyStop]
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(),
+            loss=bag_loss,
+            metrics=[bag_accuracy],
+        )
 
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
-        loss=bag_loss,
-        metrics=[bag_accuracy],
-    )
-
-    model.fit(
-        train_dataset, validation_data=val_dataset, callbacks=callbacks, epochs=10
-    )
+        model.fit(
+            train_dataset, validation_data=val_dataset, callbacks=callbacks, epochs=10
+        )
