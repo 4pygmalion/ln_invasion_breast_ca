@@ -73,9 +73,7 @@ if __name__ == "__main__":
         monitor="val_loss",
         verbose=1,
         save_best_only=True,
-        save_weights_only=True,
         mode="auto",
-        period=1,
     )
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
     callbacks = [check_point, early_stopping]
