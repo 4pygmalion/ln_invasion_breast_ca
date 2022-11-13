@@ -5,6 +5,7 @@ from PIL import Image
 
 import cv2
 
+
 def get_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -13,19 +14,27 @@ def get_args() -> argparse:
     parser.add_argument(
         "-o", "--output", help="Output image folder", required=True
     )
-
+    parser.add_argument(
+        "-s", "--stride", help="Stride", required=False, default=128
+    )
+    parser.add_argument(
+        "-w", "--patch_width", help="path width", required=False, default=512
+    )
     return parser.parse_args()
+
 
 def get_image_abs_path(directory: str) -> list:
     return [os.path.join(directory, file) for file in os.listdir(directory)]
 
 
-def is_white_patch(image_array:np.ndarray, fill_cutoff=0.3) -> bool:
-    """이미지의 대다수가 백그라운드인지 확인하는 메서드"""
+def is_background_patch(image_array: np.ndarray, fill_cutoff=0.7) -> bool:
+    """이미지의 대부분이 백그라운드인지 확인하는 메서드"""
     h, w, c = image_array.shape
-    
+
     n_pixels = h * w
-    threshold, bin_img = cv2.threshold(image_array, 224, 255, cv2.THRESH_BINARY_INV)
+    threshold, bin_img = cv2.threshold(
+        image_array, 224, 255, cv2.THRESH_BINARY_INV
+    )
     n_filled_pixels = len(np.where(bin_img != 0)[0])
 
     if n_filled_pixels / n_pixels <= fill_cutoff:
@@ -33,22 +42,25 @@ def is_white_patch(image_array:np.ndarray, fill_cutoff=0.3) -> bool:
     return False
 
 
-def extract_patch(image_path:str):
+def extract_patch(image_path: str, stride: int, patch_width: int):
     patches = dict()
     image = np.array(Image.open(image_path))
     x_max, y_max, n_channel = image.shape
 
-    x_stride_max, y_stride_max = x_max-224, y_max-224
-    for x in range(0, x_stride_max, 112):
-        for y in range(0, y_stride_max, 122):
-            patch_image = image[x:x+224, y:y+224]
-            
-            if is_white_patch(patch_image):
+    x_stride_max, y_stride_max = x_max - stride, y_max - stride
+    for x_start in range(0, x_stride_max, stride):
+        for y_start in range(0, y_stride_max, stride):
+            patch_image = image[
+                x_start : x_start + patch_width, y_start : y_start + patch_width
+            ]
+
+            if is_background_patch(patch_image, fill_cutoff=0.7):
                 continue
 
-            patches[f"{x}_{y}"] = patch_image
+            patches[f"{x_start}_{y_start}"] = patch_image
 
     return patches
+
 
 if __name__ == "__main__":
     ARGS = get_args()
@@ -67,6 +79,9 @@ if __name__ == "__main__":
         image_dir = os.path.join(output_dir, f_name)
         os.makedirs(image_dir, exist_ok=True)
 
-        patches = extract_patch(image_path)
+        patches = extract_patch(
+            image_path, stride=ARGS.stride, patch_width=ARGS.patch_width
+        )
         for region_coordiante, patch_image in patches.items():
-            np.save(os.path.join(image_dir, region_coordiante), patch_image)
+            img = Image.fromarray(patch_image)
+            img.save(os.path.join(image_dir, region_coordiante) + ".png")
