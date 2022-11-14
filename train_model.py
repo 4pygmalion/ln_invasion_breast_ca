@@ -1,4 +1,5 @@
 import os
+import argparse
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import numpy as np
@@ -15,13 +16,27 @@ print(tf.__version__)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 tf.debugging.set_log_device_placement(True)
 
-PATCH_SHAPE = (224, 224, 3)
+
+def get_args() -> argparse:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-i", "--input_patch_folder", help="Input patch image folder", required="data/train_imgs_patch"
+    )
+    parser.add_argument(
+        "-w", "--patch_width", help="path width", required=False, default=512
+    )
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
+    ARGS = get_args()
+    PATCH_WIDTH = ARGS.patch_width
+    PATCH_SHAPE = (PATCH_WIDTH, PATCH_WIDTH, 3)
+
     clinical_data = pd.read_csv("data/train.csv")
     bag_names = list(clinical_data["ID"])
     labels = list(clinical_data["N_category"])
-    patch_bags = get_patches("data/train_imgs_patch")
+    patch_bags = get_patches(ARGS.input_patch_folder)
 
     (
         train_bag_names,
@@ -38,7 +53,7 @@ if __name__ == "__main__":
         generator=data_generate,
         output_types=(tf.float32, tf.float32),
         output_shapes=(
-            tf.TensorShape([None, 224, 224, 3]),
+            tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
             tf.TensorShape(
                 [
                     1,
@@ -52,7 +67,7 @@ if __name__ == "__main__":
         generator=data_generate,
         output_types=(tf.float32, tf.float32),
         output_shapes=(
-            tf.TensorShape([None, 224, 224, 3]),
+            tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
             tf.TensorShape(
                 [
                     1,
