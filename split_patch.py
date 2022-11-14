@@ -47,7 +47,7 @@ def extract_patch(image_path: str, stride: int, patch_width: int):
     image = np.array(Image.open(image_path))
     x_max, y_max, n_channel = image.shape
 
-    x_stride_max, y_stride_max = x_max - stride, y_max - stride
+    x_stride_max, y_stride_max = x_max - patch_width, y_max - patch_width
     for x_start in range(0, x_stride_max, stride):
         for y_start in range(0, y_stride_max, stride):
             patch_image = image[
