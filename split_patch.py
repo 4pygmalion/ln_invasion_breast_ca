@@ -38,7 +38,7 @@ def is_background_patch(image_array: np.ndarray, fill_cutoff:float) -> bool:
     threshold, bin_img = cv2.threshold(
         image_array, 224, 255, cv2.THRESH_BINARY_INV
     )
-    n_filled_pixels = len(np.where(bin_img != 0)[0])
+    n_filled_pixels = len(np.where(bin_img.sum(axis=-1) != 0)[0])
 
     if n_filled_pixels / n_pixels <= fill_cutoff:
         return True
