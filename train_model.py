@@ -1,6 +1,5 @@
 import os
 import argparse
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import numpy as np
 import pandas as pd
@@ -76,7 +75,6 @@ if __name__ == "__main__":
         ),
         args=(val_bag_names, val_y, val_bags),
     )
-
 
     model = build_model(PATCH_SHAPE)
     model.summary()
