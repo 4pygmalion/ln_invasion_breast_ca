@@ -21,7 +21,7 @@ def get_args() -> argparse:
         "-i", "--input_patch_folder", help="Input patch image folder", required="data/train_imgs_patch"
     )
     parser.add_argument(
-        "-w", "--patch_width", help="path width", required=False, default=512
+        "-w", "--patch_width", help="path width", required=False, default=256, type=int
     )
     return parser.parse_args()
 
