@@ -39,6 +39,7 @@ def is_background_patch(image_array: np.ndarray, fill_cutoff=0.7) -> bool:
 
     if n_filled_pixels / n_pixels <= fill_cutoff:
         return True
+        
     return False
 
 
@@ -51,7 +52,8 @@ def extract_patch(image_path: str, stride: int, patch_width: int):
     for x_start in range(0, x_stride_max, stride):
         for y_start in range(0, y_stride_max, stride):
             patch_image = image[
-                x_start : x_start + patch_width, y_start : y_start + patch_width
+                x_start : x_start + patch_width, 
+                y_start : y_start + patch_width
             ]
 
             if is_background_patch(patch_image, fill_cutoff=0.7):
