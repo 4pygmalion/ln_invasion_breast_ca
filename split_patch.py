@@ -21,7 +21,7 @@ def get_args() -> argparse:
         "-w", "--patch_width", help="path width", required=False, default=512, type=int
     )
     parser.add_argument(
-        "-c", "--fill_cutoff", help="Fill cutoff", default=0.8,
+        "-c", "--fill_cutoff", help="Fill cutoff", default=0.8, type=float
     )
     return parser.parse_args()
 
@@ -46,7 +46,7 @@ def is_background_patch(image_array: np.ndarray, fill_cutoff:float) -> bool:
     return False
 
 
-def extract_patch(image_path: str, stride: int, patch_width: int, fill_cutoff:int):
+def extract_patch(image_path: str, stride: int, patch_width: int, fill_cutoff:float):
     patches = dict()
     image = np.array(Image.open(image_path))
     x_max, y_max, n_channel = image.shape
