@@ -15,10 +15,13 @@ def get_args() -> argparse:
         "-o", "--output", help="Output image folder", required=True
     )
     parser.add_argument(
-        "-s", "--stride", help="Stride", required=False, default=128
+        "-s", "--stride", help="Stride", required=False, default=128, type=int
     )
     parser.add_argument(
-        "-w", "--patch_width", help="path width", required=False, default=512
+        "-w", "--patch_width", help="path width", required=False, default=512, type=int
+    )
+    parser.add_argument(
+        "-c", "--fill_cutoff", help="Fill cutoff", default=0.8, type=float
     )
     return parser.parse_args()
 
@@ -27,7 +30,7 @@ def get_image_abs_path(directory: str) -> list:
     return [os.path.join(directory, file) for file in os.listdir(directory)]
 
 
-def is_background_patch(image_array: np.ndarray, fill_cutoff=0.7) -> bool:
+def is_background_patch(image_array: np.ndarray, fill_cutoff:float) -> bool:
     """이미지의 대부분이 백그라운드인지 확인하는 메서드"""
     h, w, c = image_array.shape
 
@@ -43,7 +46,7 @@ def is_background_patch(image_array: np.ndarray, fill_cutoff=0.7) -> bool:
     return False
 
 
-def extract_patch(image_path: str, stride: int, patch_width: int):
+def extract_patch(image_path: str, stride: int, patch_width: int, fill_cutoff:float):
     patches = dict()
     image = np.array(Image.open(image_path))
     x_max, y_max, n_channel = image.shape
@@ -60,7 +63,7 @@ def extract_patch(image_path: str, stride: int, patch_width: int):
             if patch_image.shape != (patch_width, patch_width, 3):
                 continue
 
-            if is_background_patch(patch_image, fill_cutoff=0.7):
+            if is_background_patch(patch_image, fill_cutoff):
                 continue
 
             patches[f"{x_start}_{y_start}"] = patch_image
@@ -86,7 +89,7 @@ if __name__ == "__main__":
         os.makedirs(image_dir, exist_ok=True)
 
         patches = extract_patch(
-            image_path, stride=ARGS.stride, patch_width=ARGS.patch_width
+            image_path, stride=ARGS.stride, patch_width=ARGS.patch_width, fill_cutoff=ARGS.fill_cutoff
         )
         for region_coordiante, patch_image in patches.items():
             img = Image.fromarray(patch_image)
