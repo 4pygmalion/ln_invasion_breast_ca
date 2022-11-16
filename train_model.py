@@ -18,10 +18,18 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices("GPU")))
 def get_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-i", "--input_patch_folder", help="Input patch image folder", required="data/train_imgs_patch"
+        "-i",
+        "--input_patch_folder",
+        help="Input patch image folder",
+        required="data/train_imgs_patch",
     )
     parser.add_argument(
-        "-w", "--patch_width", help="path width", required=False, default=256, type=int
+        "-w",
+        "--patch_width",
+        help="path width",
+        required=False,
+        default=256,
+        type=int,
     )
     return parser.parse_args()
 
@@ -30,6 +38,7 @@ if __name__ == "__main__":
     ARGS = get_args()
     PATCH_WIDTH = ARGS.patch_width
     PATCH_SHAPE = (PATCH_WIDTH, PATCH_WIDTH, 3)
+    BATCH_SIZE = 1
 
     clinical_data = pd.read_csv("data/train.csv")
     bag_names = list(clinical_data["ID"])
@@ -87,7 +96,9 @@ if __name__ == "__main__":
         save_best_only=True,
         mode="auto",
     )
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5)
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss", patience=5
+    )
     callbacks = [check_point, early_stopping]
 
     model.compile(
@@ -97,5 +108,10 @@ if __name__ == "__main__":
     )
 
     model.fit(
-        train_dataset, validation_data=val_dataset, callbacks=callbacks, epochs=10
+        train_dataset,
+        validation_data=val_dataset,
+        callbacks=callbacks,
+        epochs=10,
+        steps_per_epoch=len(train_bags) // BATCH_SIZE,
+        validation_steps=len(val_bags) // BATCH_SIZE,
     )
