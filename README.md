@@ -36,7 +36,7 @@ $ python3 split_patch.py -i data/test_imgs -o data/test_imgs_patch -s 64 -w 128
 
 2. model training
 ```
-$ python3 train_model.py -i data/train_imgs_patch
+$ python3 train_model.py -i data/train_imgs_patch -w 128
 ```
 
 
