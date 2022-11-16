@@ -10,7 +10,7 @@ $ python3 -m pip install opencv-python numpy Pillow pandas tensorflow matplotlib
 ### How to use
 1. split patch
 ```
-$ python3 split_patch.py -i data/train_imgs -o data/train_imgs_patch -s 64 -w 128 -c 0.7
+$ python3 split_patch.py -i data/train_imgs -o data/train_imgs_patch -s 64 -w 128 -c 0.4
 $ python3 split_patch.py -i data/test_imgs -o data/test_imgs_patch -s 64 -w 128
 ```
 
