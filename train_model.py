@@ -103,7 +103,7 @@ if __name__ == "__main__":
     callbacks = [check_point, early_stopping]
 
     model.compile(
-        ptimizer=tf.keras.optimizers.Adam(0.001),
+        optimizer=tf.keras.optimizers.Adam(0.001),
         loss=tf.keras.losses.BinaryCrossentropy(),
         metrics=["accuracy"],
     )
