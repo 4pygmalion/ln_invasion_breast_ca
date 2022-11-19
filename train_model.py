@@ -61,11 +61,7 @@ if __name__ == "__main__":
         output_types=(tf.float32, tf.float32),
         output_shapes=(
             tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
-            tf.TensorShape(
-                [
-                    1, 1
-                ]
-            ),
+            tf.TensorShape([1, 1]),
         ),
         args=(train_bag_names, train_y, train_bags),
     )
@@ -75,11 +71,7 @@ if __name__ == "__main__":
         output_types=(tf.float32, tf.float32),
         output_shapes=(
             tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
-            tf.TensorShape(
-                [
-                    1, 1
-                ]
-            ),
+            tf.TensorShape([1, 1]),
         ),
         args=(val_bag_names, val_y, val_bags),
     )
@@ -88,7 +80,12 @@ if __name__ == "__main__":
     model.summary()
 
     os.makedirs("check_points", exist_ok=True)
-    model_name = "check_points/" + "acc({accuracy:.4f})" + "epoch({epoch})" + "val_loss({val_loss:.4f}).hd5"
+    model_name = (
+        "check_points/"
+        + "acc({accuracy:.4f})"
+        + "epoch({epoch})"
+        + "val_loss({val_loss:.4f}).hd5"
+    )
     check_point = tf.keras.callbacks.ModelCheckpoint(
         model_name,
         monitor="val_loss",
@@ -100,7 +97,12 @@ if __name__ == "__main__":
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=5
     )
-    callbacks = [check_point, early_stopping]
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=0.2,  # (=decay)
+        verbose=True,
+    )
+    callbacks = [check_point, early_stopping, reduce_lr]
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(0.001),
@@ -109,11 +111,10 @@ if __name__ == "__main__":
     )
 
     model.fit(
-        train_dataset.repeat(), 
-        validation_data=val_dataset.repeat(), 
-        callbacks=callbacks, 
+        train_dataset.repeat(),
+        validation_data=val_dataset.repeat(),
+        callbacks=callbacks,
         epochs=100,
-        steps_per_epoch=int(len(train_bag_names)/BATCH_SIZE),
-        validation_steps=int(len(val_bag_names)/BATCH_SIZE)
+        steps_per_epoch=int(len(train_bag_names) / BATCH_SIZE),
+        validation_steps=int(len(val_bag_names) / BATCH_SIZE),
     )
-    
