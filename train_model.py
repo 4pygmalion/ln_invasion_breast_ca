@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(0.001),
-        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
         metrics=["accuracy"],
     )
 
