@@ -8,7 +8,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 
 from model import build_model
-from load_data import get_patches, data_generate
+from load_data import get_patches_path, data_generate
 from loss import bag_loss, bag_accuracy
 
 print(tf.__version__)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     clinical_data = pd.read_csv("data/train.csv")
     bag_names = list(clinical_data["ID"])
     labels = list(clinical_data["N_category"])
-    patch_bags = get_patches(ARGS.input_patch_folder)
+    patch_bags = get_patches_path(ARGS.input_patch_folder)
 
     (
         train_bag_names,
@@ -61,11 +61,7 @@ if __name__ == "__main__":
         output_types=(tf.float32, tf.float32),
         output_shapes=(
             tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
-            tf.TensorShape(
-                [
-                    1,
-                ]
-            ),
+            tf.TensorShape([1, 1]),
         ),
         args=(train_bag_names, train_y, train_bags),
     )
@@ -75,11 +71,7 @@ if __name__ == "__main__":
         output_types=(tf.float32, tf.float32),
         output_shapes=(
             tf.TensorShape([None, PATCH_WIDTH, PATCH_WIDTH, 3]),
-            tf.TensorShape(
-                [
-                    1,
-                ]
-            ),
+            tf.TensorShape([1, 1]),
         ),
         args=(val_bag_names, val_y, val_bags),
     )
@@ -88,30 +80,41 @@ if __name__ == "__main__":
     model.summary()
 
     os.makedirs("check_points", exist_ok=True)
-    model_name = "check_points/" + "_bag_accuracy_" + "epoch_" + "best.hd5"
+    model_name = (
+        "check_points/"
+        + "acc({accuracy:.4f})"
+        + "epoch({epoch})"
+        + "val_loss({val_loss:.4f}).hd5"
+    )
     check_point = tf.keras.callbacks.ModelCheckpoint(
         model_name,
         monitor="val_loss",
         verbose=1,
         save_best_only=True,
-        mode="auto",
+        save_weights_only=True,
+        mode="min",
     )
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="val_loss", patience=5
     )
-    callbacks = [check_point, early_stopping]
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=0.2,  # (=decay)
+        verbose=True,
+    )
+    callbacks = [check_point, early_stopping, reduce_lr]
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(),
-        loss=bag_loss,
-        metrics=[bag_accuracy],
+        optimizer=tf.keras.optimizers.Adam(0.001),
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+        metrics=["accuracy"],
     )
 
     model.fit(
-        train_dataset,
-        validation_data=val_dataset,
+        train_dataset.repeat(),
+        validation_data=val_dataset.repeat(),
         callbacks=callbacks,
-        epochs=10,
-        steps_per_epoch=len(train_bags) // BATCH_SIZE,
-        validation_steps=len(val_bags) // BATCH_SIZE,
+        epochs=100,
+        steps_per_epoch=int(len(train_bag_names) / BATCH_SIZE),
+        validation_steps=int(len(val_bag_names) / BATCH_SIZE),
     )
