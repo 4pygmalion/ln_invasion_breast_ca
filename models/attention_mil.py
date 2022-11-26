@@ -178,27 +178,37 @@ class MILAttention(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-def build_model(input_dim):
+def build_model(input_dim, base_model=None):
 
-    data_input = Input(shape=input_dim, dtype='float32', name='input')
-    conv1 = Conv2D(36, kernel_size=(4,4), activation='relu')(data_input)
-    conv1 = MaxPooling2D((2,2))(conv1)
+    if None:
+        data_input = Input(shape=input_dim, dtype='float32', name='input')
+        conv1 = Conv2D(36, kernel_size=(4,4), activation='relu')(data_input)
+        conv1 = MaxPooling2D((2,2))(conv1)
 
-    conv2 = Conv2D(48, kernel_size=(3,3),  activation='relu')(conv1)
-    conv2 = MaxPooling2D((2,2))(conv2)
-    x = Flatten()(conv2)
+        conv2 = Conv2D(48, kernel_size=(3,3),  activation='relu')(conv1)
+        conv2 = MaxPooling2D((2,2))(conv2)
+        x = Flatten()(conv2)
 
-    fc1 = Dense(512, activation='relu',name='fc1')(x)
-    fc1 = Dropout(0.5)(fc1)
-    fc2 = Dense(512, activation='relu', name='fc2')(fc1)
-    fc2 = Dropout(0.5)(fc2)
+        fc1 = Dense(512, activation='relu',name='fc1')(x)
+        fc1 = Dropout(0.5)(fc1)
+        fc2 = Dense(512, activation='relu', name='fc2')(fc1)
+        x = Dropout(0.5)(fc2)
 
-  #  fp = Feature_pooling(output_dim=1, kernel_regularizer=l2(0.0005), pooling_mode='max',
-#                          name='fp')(fc2)
+        alpha = MILAttention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(x)
+        x_mul = multiply([alpha, x])
 
-    alpha = MILAttention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(fc2)
-    x_mul = multiply([alpha, fc2])
+        out = MILSigmoid(output_dim=1, name='MIL_sigmoid')(x_mul)
+        Model(inputs=[input_dim], outputs=[out])
 
-    out = MILSigmoid(output_dim=1, name='FC1_sigmoid')(x_mul)
-    
-    return Model(inputs=[data_input], outputs=[out])
+    else:
+        x = tf.keras.layers.GlobalAveragePooling2D()(base_model.output)
+        x = tf.keras.layers.Dense(128)(x)
+
+        alpha = MILAttention(L_dim=128, output_dim=1, name='alpha', use_gated=True)(x)
+        x_mul = multiply([alpha, x])
+
+        out = MILSigmoid(output_dim=1, name='MIL_sigmoid')(x_mul)
+        
+        return Model(inputs=[base_model.input], outputs=[out])
+
+
