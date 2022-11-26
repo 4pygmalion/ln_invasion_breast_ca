@@ -42,10 +42,12 @@ class PoolingSigmoid(Layer):
     def build(self, input_shape):
         self.kernel = self.add_weight(
             shape=(input_shape[1], self.output_dim),
-                        trainable=True,
+            trainable=True,
+            name="pooling_weight",
         )
         self.bias = self.add_weight(
-            shape=(self.output_dim, ), trainable=True
+            shape=(self.output_dim, ), trainable=True,
+            name="booling_bais",
         )
         super(PoolingSigmoid, self).build(input_shape)
 
