@@ -180,7 +180,7 @@ class MILAttention(Layer):
 
 def build_model(input_dim, base_model=None):
 
-    if None:
+    if not base_model:
         data_input = Input(shape=input_dim, dtype='float32', name='input')
         conv1 = Conv2D(36, kernel_size=(4,4), activation='relu')(data_input)
         conv1 = MaxPooling2D((2,2))(conv1)
