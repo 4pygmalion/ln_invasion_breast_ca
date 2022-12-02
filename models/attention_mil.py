@@ -63,7 +63,7 @@ class MILSigmoid(Layer):
 
     def call(self, x, mask=None):
         n, d = x.shape
-        x = K.sum(x, axis=0, keepdims=True)
+        x = K.mean(x, axis=0, keepdims=True)
         # compute instance-level score
         x = K.dot(x, self.kernel)
         if self.use_bias:
